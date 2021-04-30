@@ -6,7 +6,8 @@ namespace page_analysis
     {
         static void Main(string[] args)
         {
-
+            PageInfo pi = new PageInfo();
+            pi.DownloadPage(Console.ReadLine());
         }
     }
 }
