@@ -16,7 +16,7 @@ namespace page_analysis
             presenter.HelloMessage();               // Печатаем приветственное сообщение
             presenter.InputUrl(ref url);            // Ввод URL
 
-            var data = info.GetStatistic(url);      // Получаем статистику
+            var data = info.GetStatistic(url, true);// Получаем статистику
             presenter.PrintStats(data);             // Печатаем статистику
         }
     }

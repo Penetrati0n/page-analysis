@@ -34,7 +34,7 @@ namespace page_analysis
         
         public IEnumerable<KeyValuePair<string, int>> GetStatistic(string urlAdress, bool writeToDataBase = false)
         {
-            Dictionary<string, int> result = new Dictionary<string, int>();
+            Dictionary<string, int> result = new();
             DownloadPage(urlAdress);
 
             // Если файл со страницей не найден, то произошла какая-то ошибка.
@@ -57,6 +57,25 @@ namespace page_analysis
 
             // Сортируем результат.
             result = result.OrderBy(k => k.Value).ToDictionary(x => x.Key, x => x.Value);
+
+            // Записываем результат в базу данных.
+            if (writeToDataBase)
+            {
+                using (var context = new StatisticsContext())
+                {
+                    foreach (var r in context.Statistics)
+                    {
+                        context.Statistics.Remove(r);
+                    }
+
+                    foreach (var r in result)
+                    {
+                        context.Statistics.Add(new WordValue(r.Key, r.Value));
+                    }
+
+                    context.SaveChanges();
+                }
+            }
 
             return result;
         }
