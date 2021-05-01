@@ -4,25 +4,64 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace page_analysis
 {
     class PageInfo
     {
-        private readonly string _urlPattern;
-        private readonly Regex _urlRegex;
-        private readonly string _pagePath;
+        private int pageCount;          // Номер страницы.
+        private string pagePath;        // Путь к файлу со страницей.
+        private readonly Filter _filter;// Фильтр, убирающий лишнюю информацию из страницы и возвращающий слова.
+
+        private int GetPageCount()
+        {
+            return pageCount;
+        }
+        private void SetPageCount(int value)
+        {
+            pageCount = value;
+            pagePath = $"page{value}.html";
+        }
 
         public PageInfo()
         {
-            _urlPattern = "((https?:\\/\\/)|)(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b";
-            _urlRegex = new Regex(_urlPattern);
-            _pagePath = "page.html";
+            SetPageCount(1);
+            while (File.Exists(pagePath))
+                SetPageCount(GetPageCount() + 1);
+
+            _filter = new Filter();
+        }
+        
+        public IEnumerable<KeyValuePair<string, int>> GetStatistic(string urlAdress, bool writeToDataBase = false)
+        {
+            Dictionary<string, int> result = new Dictionary<string, int>();
+            DownloadPage(urlAdress);
+
+            // Если файл со страницей не найден, то произошла какая-то ошибка.
+            if (!File.Exists(pagePath))
+                return null;
+
+            string page = File.ReadAllText(pagePath);
+
+            // Получаем слова из страницы.
+            var words = _filter.GetWords(page);
+            
+            // Собираем статистику по словам.
+            foreach (var w in words)
+            {
+                if (result.ContainsKey(w))
+                    result[w]++;
+                else
+                    result.Add(w, 1);
+            }
+
+            // Сортируем результат.
+            result = result.OrderBy(k => k.Value).ToDictionary(x => x.Key, x => x.Value);
+
+            return result;
         }
 
-        private Encoding GetEncodingFromPage(string urlAdress)
+        private static Encoding GetEncodingFromPage(string urlAdress)
         {
             string charSet = null;
             try
@@ -37,25 +76,29 @@ namespace page_analysis
             catch (Exception ex)
             {
                 // Log
+                return null;
             }
 
-            return charSet == null ? Encoding.Default : Encoding.GetEncoding(charSet);
+            return charSet == null || charSet == "windows-1251" ? Encoding.Default : Encoding.GetEncoding(charSet);
         }
 
-        public void DownloadPage(string urlAdress)
+        private void DownloadPage(string urlAdress)
         {
             Encoding encoding = GetEncodingFromPage(urlAdress);
 
-            WebClient client = new WebClient() { Encoding = encoding };
+            if (encoding == null) return;
+
+            WebClient client = new() { Encoding = encoding };
 
             try
             {
-                client.DownloadFile(urlAdress, _pagePath);
+                client.DownloadFile(urlAdress, pagePath);
             }
             catch (Exception ex)
             {
                 // Log
             }
         }
+
     }
 }
