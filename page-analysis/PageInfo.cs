@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,6 +13,7 @@ namespace page_analysis
         private int pageCount;          // Номер страницы.
         private string pagePath;        // Путь к файлу со страницей.
         private readonly Filter _filter;// Фильтр, убирающий лишнюю информацию из страницы и возвращающий слова.
+        private readonly Logger _logger;
 
         private int GetPageCount()
         {
@@ -30,6 +32,7 @@ namespace page_analysis
                 SetPageCount(GetPageCount() + 1);
 
             _filter = new Filter();
+            _logger = LogManager.GetCurrentClassLogger();
         }
         
         public IEnumerable<KeyValuePair<string, int>> GetStatistic(string urlAdress, bool writeToDataBase = false)
@@ -39,7 +42,10 @@ namespace page_analysis
 
             // Если файл со страницей не найден, то произошла какая-то ошибка.
             if (!File.Exists(pagePath))
+            {
+                _logger.Error("File is not exists.");
                 return null;
+            }
 
             string page = File.ReadAllText(pagePath);
 
@@ -61,26 +67,35 @@ namespace page_analysis
             // Записываем результат в базу данных.
             if (writeToDataBase)
             {
-                using (var context = new StatisticsContext())
+                try
                 {
-                    foreach (var r in context.Statistics)
+                    using (var context = new StatisticsContext())
                     {
-                        context.Statistics.Remove(r);
-                    }
+                        foreach (var r in context.Statistics)
+                        {
+                            context.Statistics.Remove(r);
+                        }
 
-                    foreach (var r in result)
-                    {
-                        context.Statistics.Add(new WordValue(r.Key, r.Value));
-                    }
+                        foreach (var r in result)
+                        {
+                            context.Statistics.Add(new WordValue(r.Key, r.Value));
+                        }
 
-                    context.SaveChanges();
+                        context.SaveChanges();
+                    }
+                    _logger.Info("Statistics recorded in the database.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Error while writing statistics to the database.");
                 }
             }
 
+            _logger.Info("Statistics received.");
             return result;
         }
 
-        private static Encoding GetEncodingFromPage(string urlAdress)
+        private Encoding GetEncodingFromPage(string urlAdress)
         {
             string charSet = null;
             try
@@ -94,10 +109,11 @@ namespace page_analysis
             }
             catch (Exception ex)
             {
-                // Log
+                _logger.Error(ex, "Encoding not received.");
                 return null;
             }
 
+            _logger.Info("Return " + charSet + ".");
             return charSet == null || charSet == "windows-1251" ? Encoding.Default : Encoding.GetEncoding(charSet);
         }
 
@@ -105,17 +121,22 @@ namespace page_analysis
         {
             Encoding encoding = GetEncodingFromPage(urlAdress);
 
-            if (encoding == null) return;
+            if (encoding == null)
+            {
+                _logger.Info("Page not downloaded.");
+                return;
+            }
 
             WebClient client = new() { Encoding = encoding };
 
             try
             {
                 client.DownloadFile(urlAdress, pagePath);
+                _logger.Info("Page downloaded.");
             }
             catch (Exception ex)
             {
-                // Log
+                _logger.Error(ex, "Page not downloaded.");
             }
         }
 
