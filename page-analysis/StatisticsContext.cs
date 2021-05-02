@@ -12,7 +12,7 @@ namespace page_analysis
         }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=statisticsWordsDB;Username=postgres;Password=super0puper");
+            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=statisticsWordsDB;Username=<username>;Password=<password>");
         }
     }
 }
