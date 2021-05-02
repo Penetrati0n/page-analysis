@@ -7,6 +7,7 @@ namespace page_analysis
     {
         static void Main(string[] args)
         {
+            Console.Title = "Page analysis :)";
             Console.OutputEncoding = Encoding.UTF8;
 
             PageInfo info = new PageInfo();         // Класс, который анализирует страницу.

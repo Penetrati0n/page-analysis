@@ -8,7 +8,7 @@ using System.Text;
 
 namespace page_analysis
 {
-    class PageInfo
+    public class PageInfo
     {
         private int pageCount;          // Номер страницы.
         private string pagePath;        // Путь к файлу со страницей.
@@ -91,6 +91,7 @@ namespace page_analysis
                 }
             }
 
+            SetPageCount(GetPageCount() + 1);
             _logger.Info("Statistics received.");
             return result;
         }
